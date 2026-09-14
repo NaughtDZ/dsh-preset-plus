@@ -6,6 +6,24 @@
 
 ---
 
+## 0. 装 fork / 远端布局
+
+```bash
+dsh plugin --profile web add github:NaughtDZ/dsh-preset-plus#plusplus   # 装完重启 DSH
+```
+
+- `origin` = 你的 fork（`NaughtDZ/dsh-preset-plus`），`upstream` = 官方库（`Rain-kl/dsh-preset-plus`）。
+- `main` 是**上游镜像**（不动它，方便 `git diff upstream/main` 看清自己的差异）；
+  fork 的工作全部在 **`plusplus`** 分支上。
+- 包名保持 `@rain-kl/dsh-preset-plus` 不变，所以 profile 的 `dsh.profile.bundles` 与
+  任何 `cordis.patch.yml` 里的 `name` 都不用改，装 fork 就是同名覆盖上游那份。
+- 改完推 `plusplus` 后要重新执行上面那条 `add`（pnpm 会把 spec 重新解析到分支最新提交），再重启 DSH。
+- 想让**默认分支**直接可用（少写 `#plusplus`）：`git checkout main && git merge --ff-only plusplus
+  && git push origin main`；此后每次同步上游都要 `rebase` + `push --force-with-lease` 重写 main，
+  代价比「只在分支上 rebase」大，随你取舍。
+
+---
+
 ## 1. 解决什么问题
 
 上游的作用域是**写死的精确匹配**：
