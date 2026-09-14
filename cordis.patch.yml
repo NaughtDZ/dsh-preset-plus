@@ -6,5 +6,14 @@
       name: '@rain-kl/dsh-preset-plus'
       config:
         enabled: true
-        scopedPresets: ["preset-plus"]
+        # plusplus fork：作用域支持 `*`(全部模式) / `preset-*`(通配) / `!模式`(排除)。
+        # 例：["preset-plus"] 只在该模式注入（上游行为）；["*","!tavern-lite"] 除酒馆外全注入。
+        scopedPresets: ["*"]
         verbose: false
+        # ── 以下为 plusplus 增强层独有配置（上游忽略，见 plusplus/README.md）──────
+        # strictScope=true：system 主提示词只在命中作用域的模式下出场（上游是全局常驻）
+        strictScope: true
+        # 模式 → 预设 id 绑定；不同 DSH 模式各用各的预设。未列出的模式用设置页激活的预设。
+        # modeBindings:
+        #   tavern-lite: roleplay
+        #   "*": jailbreak

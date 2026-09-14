@@ -28,3 +28,7 @@ jobs:
       # 核心模块 + 内置预设能正常加载。
       - run: >-
           node -e "import('./lib/core.js').then(m=>{const p=m.loadBuiltinPreset('jailbreak');if(!p||!Array.isArray(p.entries)||p.entries.length<1)process.exit(1);console.log('builtin preset OK: '+p.entries.length+' entries')})"
+      # plusplus fork：本体 hook 必须在位（同步上游后最容易被漏掉的一步），
+      # 并通过增强层语义自测 + 本体集成自测。
+      - run: node plusplus/apply-hooks.mjs --check
+      - run: npm run plusplus:test

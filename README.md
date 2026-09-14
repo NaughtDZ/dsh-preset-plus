@@ -18,6 +18,10 @@
 
 ---
 
+> **本仓库是 plusplus fork**：作用域不再写死为单个模式，支持 `["*"]`（所有模式）、白名单、
+> 通配 `preset-*`、反向排除 `!tavern-lite`，并新增 `strictScope` / `modeBindings`。
+> 本体只改了 `lib/index.js` 的 4 行，同步上游见 **[plusplus/README.md](plusplus/README.md)**。
+
 ## 它解决什么
 
 - 破限场景下，伪造模型的服从输出从而提升破限效果。
