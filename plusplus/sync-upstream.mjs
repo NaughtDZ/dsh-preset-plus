@@ -281,5 +281,6 @@ if (!pushed.ok) {
 console.log(mask(String(pushed.err || pushed.out)));
 console.log("[sync] ✓ 已推送到 fork");
 console.log("[sync] 接下来（本机生效）：");
-console.log(`       dsh plugin --profile web add github:NaughtDZ/dsh-preset-plus#${args.branch}`);
+console.log("       dsh plugin --profile web add github:NaughtDZ/dsh-preset-plus"
+  + (args.branch === "plusplus" ? "   # 默认分支就是 plusplus，不用写 #分支" : `   # 或 #${args.branch}`));
 console.log("       然后重启 DSH（host 端插件代码需要重启），控制台应出现 [preset-plus++] 横幅。");
