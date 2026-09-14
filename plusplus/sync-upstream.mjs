@@ -27,7 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyHooks } from "./apply-hooks.mjs";
@@ -215,10 +215,14 @@ for (let round = 0; !rebase.ok && round < MAX_RESOLVE_ROUNDS; round++) {
       "       并同步更新 plusplus/apply-hooks.mjs 里对应的锚点正则，然后在 plusplus/README.md 记一笔。");
   }
 
-  console.log(`[sync] 冲突（第 ${round + 1} 轮）只在 ${HOOK_FILE}：取上游版本 + 上游可重放 hook，继续 rebase`);
-  const take = gitTry("checkout", "--ours", "--", HOOK_FILE); // rebase 期间 --ours = 被 rebase 到的上游侧
-  if (!take.ok) die(3, `[sync] checkout --ours 失败：${take.err}`, "[sync] 撤销： git rebase --abort");
-  gitTry("add", "--", HOOK_FILE);
+  console.log(`[sync] 冲突（第 ${round + 1} 轮）只在 ${HOOK_FILE}：用「上游版本 + 重放 hook」作为解决结果`);
+  // 关键：把重放后的内容**直接写成冲突解决**，而不是先取上游版本、事后再打 hook ——
+  // 后者会让 rebase 提交里存的是「没有 hook 的上游版本」，hook 变成未提交改动（曾因此拒绝推送）。
+  const target = join(ROOT, HOOK_FILE);
+  const eol = readFileSync(target, "utf8").includes("\r\n") ? "\r\n" : "\n";
+  writeFileSync(target, eol === "\n" ? probe.source : probe.source.replace(/\n/g, "\r\n"), "utf8");
+  const staged = gitTry("add", "--", HOOK_FILE);
+  if (!staged.ok) die(3, `[sync] git add ${HOOK_FILE} 失败：${staged.err}`, "[sync] 撤销： git rebase --abort");
   rebase = gitTry("-c", "core.editor=true", "rebase", "--continue");
 }
 
@@ -245,8 +249,10 @@ if (!nodeRun([join(ROOT, "plusplus", "self-test.mjs")]) || !nodeRun([join(ROOT, 
 
 const after = gitTry("status", "--porcelain");
 if (after.out !== "") {
-  die(4, "[sync] 自测通过但工作区仍有未提交改动（apply-hooks 补写了 hook？）：", after.out,
-    "[sync] 先提交这些改动再重跑 --push，或 git reset --hard ORIG_HEAD 撤销。");
+  die(4, "[sync] 自测通过但工作区仍有未提交改动。未推送。", after.out,
+    `[sync] 若确认这些改动就是 hook（说明 rebase 提交里存的是上游版本），把它们并进最新提交再推：`,
+    `       git add ${HOOK_FILE} && git commit --amend --no-edit && git push --force-with-lease ${args.remote} ${args.branch}:${args.branch}`,
+    "[sync] 或整体撤销本次 rebase： git reset --hard ORIG_HEAD");
 }
 
 console.log(`[sync] ✓ rebase + 自测全部通过（HEAD = ${git("rev-parse", "--short", "HEAD")}）`);
