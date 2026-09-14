@@ -26,6 +26,7 @@
     "lint": "node --check lib/index.js && node --check lib/core.js && node --check client.js",
     "release": "node scripts/release.mjs",
     "plusplus:hooks": "node plusplus/apply-hooks.mjs --check",
+    "plusplus:sync": "node plusplus/sync-upstream.mjs",
     "plusplus:test": "node plusplus/self-test.mjs && node plusplus/integration-test.mjs"
   },
   "license": "MIT",

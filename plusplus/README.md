@@ -104,7 +104,25 @@ function enabledForAgent(agentPresets, agents, sessionId, cfg) {
 于是上游那三处 `scopes.includes(current)` 原地获得通配/排除能力，**不需要为它们分别打补丁**，
 将来上游新增的作用域判定也自动继承。
 
-### 上游同步流程
+### 上游同步流程（一条命令）
+
+```bash
+npm run plusplus:sync                        # 演练：fetch 上游 + 报告新提交与预计冲突，不动工作区
+npm run plusplus:sync -- --rebase            # 真同步：rebase 到 upstream/main，冲突自动重放 hook，然后跑自测
+npm run plusplus:sync -- --rebase --push --token-file <token文件>   # 全绿后推 fork
+```
+
+`plusplus/sync-upstream.mjs` 固化了整套流程，关键几条安全设计：
+
+- 冲突**只**允许发生在 `lib/index.js`，而且**先在内存里用 `applyHooks` 试打**这 4 个 hook：
+  打得上去才取上游版本继续；打不上去就 `git rebase --abort` 回到同步前，报出是哪个 hook 失败——
+  不会留下"同步了一半、hook 掉了一个"的状态。
+- 其它文件冲突 → 直接 abort 交给人处理。
+- 自测（hook 校验 + 51/53 + 30 项）任一失败 → **不推送**，并提示 `git reset --hard ORIG_HEAD` 撤销本次 rebase。
+- 推送用 `--force-with-lease`（rebase 后必须 force，lease 保证不覆盖别人的提交）；
+  `--token-file` 时 token 通过**环境变量**交给 git 的 credential helper，不进命令行、不进 `.git/config`、不落盘。
+
+手工等价流程（脚本坏了时用）：
 
 ```bash
 git fetch upstream && git rebase upstream/main     # 冲突几乎只会在 lib/index.js
@@ -129,9 +147,9 @@ npm run plusplus:hooks                             # 缺 hook 时退出码 1（�
   数据指向临时 `DSH_HOME`，不碰真实 `~/.dsh/preset-plus.json`。
 
 其它 fork 专属文件（都不参与上游同步）：
-`lib/plusplus.js`（增强层实现）、`plusplus/apply-hooks.mjs`、`plusplus/self-test.mjs`、
-`plusplus/integration-test.mjs`、本文件。
-`package.json` 只多了 `plusplus:hooks` / `plusplus:test` 两条 scripts 与 `files` 里的 `plusplus`。
+`lib/plusplus.js`（增强层实现）、`plusplus/apply-hooks.mjs`、`plusplus/sync-upstream.mjs`、
+`plusplus/self-test.mjs`、`plusplus/integration-test.mjs`、本文件。
+`package.json` 只多了 `plusplus:hooks` / `plusplus:sync` / `plusplus:test` 三条 scripts 与 `files` 里的 `plusplus`。
 
 ## 4. 两个必须知道的真相
 
@@ -181,6 +199,7 @@ plusplus 把这段判定显式化：
 - 新增作用域匹配层：`*` 全量 / 白名单 / 通配 / `!` 反向排除 / 逗号分隔字符串。
 - 新增 `strictScope`：system 段作用域感知，修掉「非作用域模式仍被注入 system 主提示词」。
 - 新增 `modeBindings`：模式 → 预设 绑定（含 `*` 兜底与失效回落）。
-- 新增 `plusplus/apply-hooks.mjs`（hook 幂等重放 + `--check`）、`plusplus/self-test.mjs`（51 项语义自测，
+- 新增 `plusplus/apply-hooks.mjs`（hook 幂等重放 + `--check`）、`plusplus/sync-upstream.mjs`（一条命令同步上游，
+  冲突自动重放、打不上就 abort、自测不过不推送）、`plusplus/self-test.mjs`（51 项语义自测，
   带 `--pristine` 时 53 项）、`plusplus/integration-test.mjs`（30 项本体集成自测）。
 - `cordis.patch.yml` 默认 `scopedPresets: ["*"]`、`strictScope: true`；CI 增加 hook 校验与自测两步。
